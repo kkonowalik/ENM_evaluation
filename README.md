@@ -43,4 +43,4 @@ MAE <- mae(testECE$testECE, testECE$layer)
 
 In case you will use this method I will appreciate if you can provide a citation to the paper - the details are in the beginning and the link is here: https://rdcu.be/cjB5b
 
-Thank's!
+Thank's and good luck with modeling! :)
