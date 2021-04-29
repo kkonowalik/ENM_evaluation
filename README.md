@@ -8,15 +8,15 @@ I was going to publish my R code that was used in this publication. I hope to do
 You need three input files:
 
 1) raster
-library(raster)
-#"mm_TESTING01" is your raster file (model), you can use a result from maxent or any other algorithm, even if you do it outside R
-# for example
-mm_TESTING01 <- raster("M:/GIS/models/maxent_model.tif")
+>library(raster)
+>#"mm_TESTING01" is your raster file (model), you can use a result from maxent or any other algorithm, even if you do it outside R
+>#for example
+>mm_TESTING01 <- raster("M:/GIS/models/maxent_model.tif")
 
 2) presence points
-points_pres <- read.csv("D:/rs_pres.csv",header=TRUE)
+'points_pres <- read.csv("D:/rs_pres.csv",header=TRUE)
 points_pres1 <- points_pres[,2:3]
-#column 2 and 3 are latitude and longitude
+#column 2 and 3 are latitude and longitude'
 
 3) absence points
 points_abs <- read.csv("D:/rot1/dysk_google/rs_abs.csv",header=TRUE)
