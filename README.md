@@ -16,7 +16,7 @@ mm_TESTING01 <- raster("M:/GIS/models/maxent_model.tif")
 ```
 points_pres <- read.csv("D:/rs_pres.csv",header=TRUE)
 points_pres1 <- points_pres[,2:3]
-#column 2 and 3 are latitude and longitude'
+#column 2 and 3 are latitude and longitude
 ```
 3) absence points
 (if you don't have true absences you can also use your background points)
