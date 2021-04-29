@@ -19,8 +19,10 @@ points_pres1 <- points_pres[,2:3]
 #column 2 and 3 are latitude and longitude'
 
 3) absence points
+```
 points_abs <- read.csv("D:/rot1/dysk_google/rs_abs.csv",header=TRUE)
 points_abs1 <- points_abs[,2:3]
+```
 
 #if your absence or presence points are in wgs84 you can assign a crs, sometimes it is necessary to have a crs assigned
 points_abs1 <- SpatialPointsDataFrame(coords = points_abs1, data = points_abs1, proj4string = CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
