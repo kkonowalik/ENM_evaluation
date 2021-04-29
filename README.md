@@ -16,7 +16,7 @@ mm_TESTING01 <- raster("M:/GIS/models/maxent_model.tif")
 ```
 2) presence points
 ```
-'points_pres <- read.csv("D:/rs_pres.csv",header=TRUE)
+points_pres <- read.csv("D:/rs_pres.csv",header=TRUE)
 points_pres1 <- points_pres[,2:3]
 #column 2 and 3 are latitude and longitude'
 ```
