@@ -2,9 +2,7 @@
 Some of the R code that was used in the publication: 
 Konowalik, K., Nosol, A. Evaluation metrics and validation of presence-only species distribution models based on distributional maps with varying coverage. Sci Rep 11, 1482 (2021). https://doi.org/10.1038/s41598-020-80062-1
 
-Hi,
-I was going to publish my R code that was used in this publication. I hope to do so but in the meantime I will also publish one that is prbably the most useful. One of the findings of that paper was that you can use AUC and MAE to select which models have the best scores for your data (see figure 6 in the publication). It is one of the ways that may be used - I'm not an R expert but it works quite easily! Let's start.
-
+I hope to publish the whole R code that was used in this publication but in the meantime, I will also publish one piece that is probably the most useful. One of the findings of that paper was that you can use AUC and MAE to select which models have the best scores for your data (see figure 6 in the publication). It is one of the ways how to apply it - probably there is a nicer way to do it but like this, it works quite easily. 
 You need three input files:
 
 1) raster
