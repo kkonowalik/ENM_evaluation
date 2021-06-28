@@ -26,7 +26,7 @@ points_abs1 <- points_abs[,2:3]
 #if your absence or presence points are in wgs84 you can assign a crs, sometimes it is necessary to have a crs assigned
 points_abs1 <- SpatialPointsDataFrame(coords = points_abs1, data = points_abs1, proj4string = CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
 ```
-We are going to use functions from package "Metrics". First we load the package, assign raster values to points, make a table (it is easier to keep also the cell numbers), and finally compute metrics AUC, MAE, and bias. It goes like this:
+We are going to use functions from package "Metrics". First we load the package, then assign raster values to points, make a table (it is easier to keep also the cell numbers), and finally compute metrics AUC, MAE, and bias. It goes like this:
 ```
 library("Metrics")
 #you extract the values of raster at you presence and absence points
