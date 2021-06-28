@@ -43,6 +43,8 @@ MAE <- mae(testECE$testECE, testECE$layer)
 AUC <- auc(testECE$testECE, testECE$layer)
 ```
 
+In case you have several algorithms and settings to compare it is useful to save the values for each of it and make a graph. 
+
 In case you will use this method I will appreciate if you can provide a citation to the paper - the details are in the beginning and the link is here: https://rdcu.be/cjB5b
 
 Thank's and good luck with modeling!
