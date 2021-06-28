@@ -26,7 +26,7 @@ points_abs1 <- points_abs[,2:3]
 #if your absence or presence points are in wgs84 you can assign a crs, sometimes it is necessary to have a crs assigned
 points_abs1 <- SpatialPointsDataFrame(coords = points_abs1, data = points_abs1, proj4string = CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
 ```
-Then it goes like this:
+We are going to use functions from package "Metrics". First we load the package, assign raster values to points, make a table (it is easier to keep also the cell numbers), and finally compute metrics AUC, MAE, and bias. It goes like this:
 ```
 library("Metrics")
 #you extract the values of raster at you presence and absence points
@@ -40,6 +40,7 @@ colnames(testECE) <- c('testECE', 'cells', 'layer')
 testECE <- subset(testECE, select = c(testECE, layer))
 bias <- bias(testECE$testECE, testECE$layer)
 MAE <- mae(testECE$testECE, testECE$layer)
+AUC <- auc(testECE$testECE, testECE$layer)
 ```
 
 In case you will use this method I will appreciate if you can provide a citation to the paper - the details are in the beginning and the link is here: https://rdcu.be/cjB5b
