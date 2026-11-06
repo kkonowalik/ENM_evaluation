@@ -1,17 +1,20 @@
 Package: ENMselect
 Type: Package
 Title: Evaluate and Select Species Distribution Models Using AUC and MAE
-Version: 1.0.0
+Version: 1.1.0
 Authors@R:
     person("Kamil", "Konowalik", role = c("aut", "cre", "cph"),
            email = "kamil.konowalik@gmail.com")
-Description: Tools to evaluate presence-only (or presence-absence) species
-    distribution models / ecological niche models using the simultaneous use of
-    the area under the ROC curve (AUC) and the mean absolute error (MAE), as
-    proposed in Konowalik and Nosol (2021) <doi:10.1038/s41598-020-80062-1>.
-    Models are compared through Pareto (non-dominated) ranking, a compromise
-    distance to the ideal point, and bootstrap resampling of evaluation points
-    that quantifies how robust the selection of each model is.
+Description: Tools to evaluate and select species distribution models /
+    ecological niche models built with any software. Implements the
+    simultaneous use of the area under the ROC curve (AUC) and the mean
+    absolute error (MAE) proposed in Konowalik and Nosol (2021)
+    <doi:10.1038/s41598-020-80062-1>, together with the true skill statistic
+    and the continuous Boyce index. Supports spatial block cross-validation
+    across folds and background sets, temporal validation of hindcasts against
+    dated (e.g. fossil) records matched to the climate of their time, and
+    model selection by conventional minimum values or Pareto optimality with a
+    tolerance for ties, with bootstrap estimates of selection robustness.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.1.0)

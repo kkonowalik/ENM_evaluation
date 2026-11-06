@@ -14,7 +14,9 @@ simulate_enm_data(n_presence = 100, n_absence = 300, seed = NULL)
 \value{
 A list with \code{models} (a multi-layer \code{SpatRaster}, values 0-1),
 \code{presence} and \code{absence} (data.frames with \code{lon} and \code{lat} columns) and
-\code{truth} (the true suitability raster).
+\code{truth} (the true suitability raster) and \code{env} (two environmental
+predictor layers, \code{env1} and \code{env2}, scaled 0-1, for fitting your own
+models).
 }
 \description{
 Creates a virtual species on a small grid, samples presence and absence

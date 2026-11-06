@@ -4,3 +4,4 @@
 .Ruserdata
 *.Rcheck/
 ENMselect_*.tar.gz
+Rplots.pdf

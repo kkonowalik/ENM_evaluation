@@ -132,3 +132,133 @@ plot_pareto <- function(x, labels = NULL, error_bars = TRUE, zoom = FALSE,
 
 #' @importFrom rlang .data
 NULL
+
+#' Plot a model selection for any pair of metrics
+#'
+#' Shows the models from [select_models()] in the space of two metrics.
+#' Selected models are filled, Pareto-front models are circles (others are
+#' squares), dashed lines mark the minimum values and bars show +/- 1 SD
+#' across cross-validation runs when `<metric>_sd` columns are present. Call
+#' it several times for several panels, e.g. AUC vs MAE and AUC vs fossil AUC.
+#'
+#' @param x An `enm_selection` object from [select_models()].
+#' @param x_metric,y_metric Columns to plot on the x and y axes.
+#' @param labels Label the points with model names.
+#' @param base_size Base font size.
+#' @return A `ggplot` object.
+#' @export
+#' @examples
+#' df <- data.frame(model = c("GLM", "GBM", "RF", "SRE"),
+#'                  AUC = c(0.86, 0.88, 0.87, 0.71),
+#'                  TSS = c(0.62, 0.65, 0.66, 0.38),
+#'                  MAE = c(0.30, 0.27, 0.24, 0.41))
+#' plot_selection(select_models(df))
+#' plot_selection(select_models(df), x_metric = "TSS")
+plot_selection <- function(x, x_metric = "MAE", y_metric = "AUC",
+                           labels = TRUE, base_size = 12) {
+  if (!inherits(x, "enm_selection")) {
+    stop("`x` must be the output of select_models().", call. = FALSE)
+  }
+  df <- as.data.frame(x)
+  miss <- setdiff(c(x_metric, y_metric), names(df))
+  if (length(miss)) {
+    stop("Columns not found: ", paste(miss, collapse = ", "), call. = FALSE)
+  }
+  df$.x <- df[[x_metric]]
+  df$.y <- df[[y_metric]]
+  df$status <- factor(ifelse(df$selected, "Selected", "Not selected"),
+                      levels = c("Selected", "Not selected"))
+  df$front <- factor(ifelse(df$pareto, "Pareto front", "Dominated"),
+                     levels = c("Pareto front", "Dominated"))
+  crit <- attr(x, "criteria")
+  mins <- attr(x, "min_metrics")
+  ink <- "#3a3a38"
+  muted <- "#8a8a86"
+  axis_lab <- function(m) {
+    dir <- if (m %in% names(crit)) crit[[m]] else NA
+    if (is.na(dir)) m else paste0(m, if (dir == "max") " (higher is better)"
+                                  else " (lower is better)")
+  }
+
+  p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$.x, y = .data$.y))
+  if (x_metric %in% names(mins)) {
+    p <- p + ggplot2::geom_vline(xintercept = mins[[x_metric]],
+                                 linetype = "dashed", colour = muted,
+                                 linewidth = 0.4)
+  }
+  if (y_metric %in% names(mins)) {
+    p <- p + ggplot2::geom_hline(yintercept = mins[[y_metric]],
+                                 linetype = "dashed", colour = muted,
+                                 linewidth = 0.4)
+  }
+  xs <- paste0(x_metric, "_sd")
+  ys <- paste0(y_metric, "_sd")
+  if (ys %in% names(df)) {
+    p <- p + ggplot2::geom_errorbar(
+      ggplot2::aes(ymin = .data$.y - .data[[ys]],
+                   ymax = .data$.y + .data[[ys]]),
+      width = 0, colour = muted, linewidth = 0.4)
+  }
+  if (xs %in% names(df)) {
+    p <- p + ggplot2::geom_errorbarh(
+      ggplot2::aes(xmin = .data$.x - .data[[xs]],
+                   xmax = .data$.x + .data[[xs]]),
+      height = 0, colour = muted, linewidth = 0.4)
+  }
+  p <- p +
+    ggplot2::geom_point(ggplot2::aes(fill = .data$status,
+                                     shape = .data$front),
+                        size = 3.6, colour = "white", stroke = 0.8) +
+    ggplot2::scale_fill_manual(values = c("Selected" = "#1c5cab",
+                                          "Not selected" = "#b4b3ae"),
+                               name = NULL, drop = FALSE,
+                               guide = ggplot2::guide_legend(
+                                 override.aes = list(shape = 21))) +
+    ggplot2::scale_shape_manual(values = c("Pareto front" = 21,
+                                           "Dominated" = 22),
+                                name = NULL, drop = FALSE,
+                                guide = ggplot2::guide_legend(
+                                  override.aes = list(fill = "#5c5c58")))
+  if (labels) p <- p + label_layer(df, ink, muted, base_size)
+  if (x_metric %in% names(crit) && crit[[x_metric]] == "min") {
+    p <- p + ggplot2::scale_x_reverse()
+  }
+  if (y_metric %in% names(crit) && crit[[y_metric]] == "min") {
+    p <- p + ggplot2::scale_y_reverse()
+  }
+  p +
+    ggplot2::labs(x = axis_lab(x_metric), y = axis_lab(y_metric),
+                  title = paste("Model selection:", y_metric, "vs", x_metric),
+                  subtitle = paste0(
+                    "Selection rule: ", attr(x, "rule"),
+                    ". Better models are top-right.\n",
+                    if (length(mins)) "Dashed lines: minimum values. ",
+                    if (ys %in% names(df) || xs %in% names(df))
+                      "Bars: \u00b11 SD across runs.")) +
+    theme_enm(base_size, ink, muted)
+}
+
+label_layer <- function(df, ink, muted, base_size) {
+  if (requireNamespace("ggrepel", quietly = TRUE)) {
+    ggrepel::geom_text_repel(data = df, ggplot2::aes(label = .data$model),
+                             colour = ink, size = base_size / 3.6,
+                             box.padding = 0.5, min.segment.length = 0.2,
+                             segment.colour = muted, segment.size = 0.3,
+                             seed = 1, max.overlaps = Inf)
+  } else {
+    ggplot2::geom_text(data = df, ggplot2::aes(label = .data$model),
+                       colour = ink, size = base_size / 3.6, vjust = -1.1)
+  }
+}
+
+theme_enm <- function(base_size, ink, muted) {
+  ggplot2::theme_minimal(base_size = base_size) +
+    ggplot2::theme(
+      panel.grid.minor = ggplot2::element_blank(),
+      panel.grid.major = ggplot2::element_line(colour = "#e6e5e1",
+                                               linewidth = 0.3),
+      plot.background = ggplot2::element_rect(fill = "white", colour = NA),
+      text = ggplot2::element_text(colour = ink),
+      plot.subtitle = ggplot2::element_text(colour = muted),
+      legend.position = "right")
+}

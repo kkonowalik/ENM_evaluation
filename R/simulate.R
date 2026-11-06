@@ -8,7 +8,9 @@
 #' @param seed Optional random seed.
 #' @return A list with `models` (a multi-layer `SpatRaster`, values 0-1),
 #'   `presence` and `absence` (data.frames with `lon` and `lat` columns) and
-#'   `truth` (the true suitability raster).
+#'   `truth` (the true suitability raster) and `env` (two environmental
+#'   predictor layers, `env1` and `env2`, scaled 0-1, for fitting your own
+#'   models).
 #' @export
 #' @examples
 #' sim <- simulate_enm_data(seed = 42)
@@ -51,6 +53,8 @@ simulate_enm_data <- function(n_presence = 100, n_absence = 300, seed = NULL) {
     data.frame(lon = p[, 1] + stats::runif(length(cells), -0.06, 0.06),
                lat = p[, 2] + stats::runif(length(cells), -0.05, 0.05))
   }
+  env <- c(make(env1), make(env2))
+  names(env) <- c("env1", "env2")
   list(models = models, presence = jitter(pres_cells),
-       absence = jitter(abs_cells), truth = tr)
+       absence = jitter(abs_cells), truth = tr, env = env)
 }

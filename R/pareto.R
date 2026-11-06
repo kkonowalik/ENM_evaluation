@@ -18,11 +18,20 @@
 #' The function is generic: any number of criteria (e.g. AUC, MAE, TSS,
 #' Boyce index, AICc, omission rate) can be used.
 #'
+#' **Tolerance.** Differences of a few thousandths in AUC are usually within
+#' sampling noise (compare them with the SD of AUC across folds). With
+#' `tol > 0`, a model is dominated only if another model is better by more
+#' than `tol` on at least one criterion *and* not worse by more than `tol` on
+#' any, so near-ties no longer remove models from the front.
+#'
 #' @param x A data.frame with one row per model.
 #' @param maximize Character vector of columns where larger is better.
 #' @param minimize Character vector of columns where smaller is better.
 #' @param weights Optional named numeric vector of criterion weights (names
 #'   must match `maximize`/`minimize`); missing names get weight 1.
+#' @param tol Differences smaller than this count as ties: one number for all
+#'   criteria or a named vector, e.g. `c(AUC = 0.01, MAE = 0.005)`.
+#'   Default 0 (strict Pareto dominance).
 #' @return `x` with added columns `pareto_front` (1 = non-dominated) and
 #'   `distance` (0 = ideal), sorted by front then distance.
 #' @export
@@ -32,7 +41,7 @@
 #'                  MAE = c(0.30, 0.20, 0.25, 0.32))
 #' pareto_rank(df, maximize = "AUC", minimize = "MAE")
 pareto_rank <- function(x, maximize = "AUC", minimize = "MAE",
-                        weights = NULL) {
+                        weights = NULL, tol = 0) {
   crit <- c(maximize, minimize)
   if (length(crit) < 1) stop("Specify at least one criterion.", call. = FALSE)
   miss <- setdiff(crit, names(x))
@@ -44,7 +53,7 @@ pareto_rank <- function(x, maximize = "AUC", minimize = "MAE",
   storage.mode(m) <- "double"
   m[, seq_along(maximize)] <- -m[, seq_along(maximize)]
 
-  x$pareto_front <- pareto_fronts(m)
+  x$pareto_front <- pareto_fronts(m, tol = expand_tol(tol, crit))
 
   w <- stats::setNames(rep(1, length(crit)), crit)
   if (!is.null(weights)) {
@@ -68,8 +77,9 @@ pareto_rank <- function(x, maximize = "AUC", minimize = "MAE",
 #'   Rows with missing values get `NA`.
 #' @keywords internal
 #' @noRd
-pareto_fronts <- function(m) {
+pareto_fronts <- function(m, tol = 0) {
   m <- as.matrix(m)
+  tol <- rep_len(tol, ncol(m))
   n <- nrow(m)
   front <- rep(NA_integer_, n)
   remaining <- which(stats::complete.cases(m))
@@ -77,8 +87,10 @@ pareto_fronts <- function(m) {
   while (length(remaining) > 0) {
     sub <- m[remaining, , drop = FALSE]
     dominated <- vapply(seq_along(remaining), function(i) {
-      better_eq <- sweep(sub, 2, sub[i, ], `<=`)
-      strictly <- sweep(sub, 2, sub[i, ], `<`)
+      # j dominates i: not worse by more than tol anywhere, better by more
+      # than tol somewhere (tol = 0: classic Pareto dominance)
+      better_eq <- sweep(sub, 2, sub[i, ] + tol, `<=`)
+      strictly <- sweep(sub, 2, sub[i, ] - tol, `<`)
       any(rowSums(better_eq) == ncol(sub) & rowSums(strictly) > 0)
     }, logical(1))
     front[remaining[!dominated]] <- k
@@ -86,4 +98,13 @@ pareto_fronts <- function(m) {
     k <- k + 1L
   }
   front
+}
+
+# Tolerance as one value per criterion, in the order of `crit` (internal)
+expand_tol <- function(tol, crit) {
+  if (is.null(names(tol))) return(rep_len(tol, length(crit)))
+  out <- stats::setNames(rep(0, length(crit)), crit)
+  hit <- intersect(names(tol), crit)
+  out[hit] <- tol[hit]
+  unname(out)
 }

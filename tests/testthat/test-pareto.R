@@ -27,3 +27,15 @@ test_that("pareto_rank works with more than two criteria", {
   expect_equal(r$pareto_front[r$m == 1], 2L)
   expect_error(pareto_rank(df, maximize = "zzz"), "not found")
 })
+
+test_that("tolerance turns near-ties into ties", {
+  df <- data.frame(model = c("A", "B"), AUC = c(0.900, 0.895),
+                   MAE = c(0.200, 0.201))
+  expect_equal(sum(pareto_rank(df)$pareto_front == 1), 1)        # A wins
+  expect_equal(sum(pareto_rank(df, tol = 0.01)$pareto_front == 1), 2)
+  # named tolerance: only AUC differences are forgiven
+  df2 <- data.frame(model = c("A", "B"), AUC = c(0.900, 0.895),
+                    MAE = c(0.20, 0.25))
+  r <- pareto_rank(df2, tol = c(AUC = 0.01))
+  expect_equal(r$model[r$pareto_front == 1], "A")
+})

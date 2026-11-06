@@ -25,8 +25,9 @@ adds statistics for choosing among models:
 | Spatial packages | `raster`, `sp`, `rgdal` (retired in 2023) | **`terra`** (current standard); `sf` objects accepted |
 | Input | one raster at a time, fixed CSV columns | many models at once; GeoTIFF paths, `SpatRaster`, CSV, `sf`, GBIF-style columns detected automatically |
 | Coordinate systems | had to match manually | points re-projected to each raster automatically |
-| Metrics | AUC, MAE, bias via `Metrics` | same values, no extra dependency (checked to be identical) |
-| Model choice | visual inspection of a plot | **Pareto front**, compromise distance to the ideal model, **bootstrap** confidence intervals and probability of being on the Pareto front |
+| Metrics | AUC, MAE, bias via `Metrics` | same values, no extra dependency (checked to be identical), plus TSS and the continuous Boyce index (identical to `ecospat`) |
+| Validation | one set of evaluation points | also **spatial block cross-validation** across folds and background sets, and **temporal validation** of hindcasts against fossil or other dated records |
+| Model choice | visual inspection of a plot | conventional **minimum values** or the **Pareto front** (with a tolerance for ties), compromise distance to the ideal model, **bootstrap** confidence intervals and probability of being on the Pareto front |
 | Plot | manual | ready-to-publish `ggplot2` figure |
 
 ## Installation
@@ -124,6 +125,106 @@ tab <- data.frame(obs = c(1, 1, 0, 0, ...),   # 1 = presence, 0 = absence
                   maxent = c(...), glm = c(...))
 evaluate_models(data = tab, n_boot = 1000)
 ```
+
+## Full workflow: spatial cross-validation, fossil validation, selection
+
+`ENMselect` does not fit models: use biomod2, ENMeval, Maxent, tidymodels
+or your own code. It takes over at the evaluation and selection stage. A
+typical workflow for choosing the algorithms of an ensemble:
+
+1. **Spatial folds.** `spatial_folds()` splits the study area into square
+   blocks (side ideally larger than the spatial autocorrelation range of the
+   predictors, e.g. from `blockCV::cv_spatial_autocor()`) and assigns them to
+   folds with balanced numbers of presences and background points.
+2. **Fit models** on all folds but one, for each algorithm, fold and,
+   optionally, several background sets. Predict on the held-out fold.
+3. **Hold-out metrics.** `evaluate_cv()` computes AUC, MAE, bias, TSS and the
+   Boyce index per run and summarises them per algorithm. It also shows
+   whether background sets or folds cause more variation, and AUC per fold.
+4. **Temporal validation** (optional). `temporal_validation()` checks
+   hindcasts against fossil records (see below).
+5. **Selection.** `select_models()` keeps every algorithm that reaches
+   conventional minimum values (default AUC >= 0.8, TSS >= 0.6), or only the
+   Pareto front. `plot_selection()` draws any pair of metrics.
+
+A complete example you can run with the simulated data. It compares three GLMs
+on 4 spatial folds and 2 background sets:
+
+```r
+library(ENMselect)
+sim <- simulate_enm_data(seed = 1, n_presence = 150, n_absence = 600)
+pts <- rbind(cbind(sim$presence, occ = 1, set = 0),                  # presences
+             cbind(sim$absence, occ = 0, set = rep(1:2, each = 300))) # 2 background sets
+pts$fold <- spatial_folds(pts, k = 4, block_size = 100, occ = pts$occ, seed = 1)
+pts <- cbind(pts, terra::extract(sim$env, pts[c("lon", "lat")], ID = FALSE))
+
+formulas <- list(GLM_quadratic = occ ~ env1 + I(env1^2) + env2 + I(env2^2),
+                 GLM_linear    = occ ~ env1 + env2,
+                 GLM_env2_only = occ ~ env2 + I(env2^2))
+holdout <- list()
+for (s in 1:2) for (f in 1:4) for (a in names(formulas)) {
+  d <- pts[pts$set %in% c(0, s), ]              # presences + background set s
+  fit <- glm(formulas[[a]], binomial, data = d[d$fold != f, ])
+  test <- d[d$fold == f, ]
+  holdout[[length(holdout) + 1]] <- data.frame(
+    model = a, set = s, fold = f, obs = test$occ,
+    pred = predict(fit, test, type = "response"))
+}
+cv <- evaluate_cv(do.call(rbind, holdout), set = "set")
+cv
+sel <- select_models(cv, min_metrics = c(AUC = 0.8, TSS = 0.6))
+sel
+plot_selection(sel)                       # AUC vs MAE
+plot_selection(sel, x_metric = "TSS")     # AUC vs TSS
+```
+
+![Selection example](man/figures/selection_example.png)
+
+The input to `evaluate_cv()` is a simple long table: one row per held-out
+point and run, with columns `model`, `fold`, `obs` (1/0), `pred` and,
+optionally, `set`. Any modelling software's output can be put in this form.
+With biomod2, for example, project the cross-validation models on the
+evaluation points and keep, for each run, the points of its held-out fold.
+
+### Fossil (temporal) validation
+
+Hindcasts can be tested against dated records, such as fossils or pollen.
+Records have no true absences, so each record is compared with background
+cells *of the same time slice*. Its score is the proportion of those cells
+with lower predicted suitability (0.5 = random, 1 = perfect). A record
+spanning several slices, e.g. a 1000-year bin matched to ten 100-year
+TraCE21k slices, gets its mean score. The mean over records is a "fossil
+AUC".
+
+```r
+# sites: one row per record x time slice x model (x run), with the prediction
+#        under that slice's climate, e.g. columns record, slice, model, run,
+#        period, novel, pred
+# bg:    the same for background cells (same cells in every slice): slice,
+#        model, run, pred
+fos <- temporal_validation(
+  sites, bg, run = "run", period = "period", novel = "novel",
+  combine = list(deep = c("Lateglacial", "Glacial")),  # the periods that matter
+  thresholds = thr,       # optional: 10% presence threshold per model and run
+  prefix = "fossil")
+all <- merge(cv, fos, by = "model")
+sel <- select_models(all,
+                     min_metrics = c(AUC = 0.8, TSS = 0.6, fossil_AUC_deep = 0.7),
+                     criteria = c(AUC = "max", MAE = "min", fossil_AUC_deep = "max"),
+                     tol = 0.01)
+plot_selection(sel, x_metric = "AUC", y_metric = "fossil_AUC_deep")
+```
+
+Helpers for preparing the climate of each record:
+
+- `anomaly_climate()`: past climate = high-resolution present (e.g. CHELSA)
+  plus the climate-model anomaly (past minus the model's present). It uses a
+  ratio for precipitation and works on point tables (fast) or rasters.
+- `outside_range()`: flags non-analog climates (outside the calibration
+  range). The `fossil_AUC_analog` score ignores them.
+- `age_to_period()`: Holocene / Lateglacial / Glacial from ages in cal BP.
+- `threshold_p10()`: the 10th-percentile training presence threshold, for
+  sensitivity.
 
 ## How the selection works
 

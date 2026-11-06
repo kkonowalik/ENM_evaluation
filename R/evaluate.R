@@ -163,6 +163,9 @@ bootstrap_metrics <- function(obs, preds, n_boot) {
 
 #' @export
 print.enm_evaluation <- function(x, digits = 3, ...) {
+  if (!all(c("model", "pareto_front", "n_presence") %in% names(x))) {
+    return(print_plain(x, digits, ...))
+  }
   nb <- attr(x, "n_boot")
   cat("ENM evaluation: ", nrow(x), " model(s), ", x$n_presence[1],
       " presence and ", x$n_absence[1], " absence/background points\n",

@@ -4,7 +4,7 @@
 \alias{pareto_rank}
 \title{Pareto ranking and compromise score for multi-criteria model selection}
 \usage{
-pareto_rank(x, maximize = "AUC", minimize = "MAE", weights = NULL)
+pareto_rank(x, maximize = "AUC", minimize = "MAE", weights = NULL, tol = 0)
 }
 \arguments{
 \item{x}{A data.frame with one row per model.}
@@ -15,6 +15,10 @@ pareto_rank(x, maximize = "AUC", minimize = "MAE", weights = NULL)
 
 \item{weights}{Optional named numeric vector of criterion weights (names
 must match \code{maximize}/\code{minimize}); missing names get weight 1.}
+
+\item{tol}{Differences smaller than this count as ties: one number for all
+criteria or a named vector, e.g. \code{c(AUC = 0.01, MAE = 0.005)}.
+Default 0 (strict Pareto dominance).}
 }
 \value{
 \code{x} with added columns \code{pareto_front} (1 = non-dominated) and
@@ -37,6 +41,12 @@ criterion count more than another. This is the "compromise programming"
 
 The function is generic: any number of criteria (e.g. AUC, MAE, TSS,
 Boyce index, AICc, omission rate) can be used.
+
+\strong{Tolerance.} Differences of a few thousandths in AUC are usually within
+sampling noise (compare them with the SD of AUC across folds). With
+\code{tol > 0}, a model is dominated only if another model is better by more
+than \code{tol} on at least one criterion \emph{and} not worse by more than \code{tol} on
+any, so near-ties no longer remove models from the front.
 }
 \examples{
 df <- data.frame(model = c("A", "B", "C", "D"),
