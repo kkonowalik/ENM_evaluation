@@ -2,15 +2,18 @@
 % Please edit documentation in R/evaluate.R
 \name{evaluate_models}
 \alias{evaluate_models}
-\title{Evaluate one or many models with AUC, MAE and bias}
+\title{Evaluate one or many models and rank them by Pareto optimality}
 \usage{
 evaluate_models(
   models = NULL,
   presence = NULL,
   absence = NULL,
+  criteria = c(AUC = "max", MAE = "min"),
+  metrics = NULL,
   n_boot = 0,
   conf = 0.95,
-  weights = c(AUC = 1, MAE = 1),
+  weights = NULL,
+  tol = 0,
   coords = NULL,
   crs = "EPSG:4326",
   na_action = c("common", "per_model"),
@@ -28,13 +31,23 @@ model), file path(s) to rasters, or a named list of these.}
 \item{absence}{Absence points or, for presence-only data, background /
 pseudo-absence points (same formats as \code{presence}).}
 
+\item{criteria}{Named vector of the metrics to compare and their
+direction (\code{"max"}, \code{"min"} or \code{"zero"}); see Details. Default
+\code{c(AUC = "max", MAE = "min")}.}
+
+\item{metrics}{Optional named list of extra metric functions
+\verb{function(obs, pred)} returning a single number; \code{obs} is 0/1, \code{pred}
+the predicted suitability.}
+
 \item{n_boot}{Number of bootstrap resamples (0 = no bootstrap). 500 to 1000
 is a good choice for final results.}
 
 \item{conf}{Confidence level for bootstrap intervals (default 0.95).}
 
-\item{weights}{Relative importance of AUC and MAE in the compromise score;
-see \code{\link[=pareto_rank]{pareto_rank()}}.}
+\item{weights}{Optional named vector of the relative importance of the
+criteria in the compromise score (default: equal); see \code{\link[=pareto_rank]{pareto_rank()}}.}
+
+\item{tol}{Tolerance for Pareto ties; see \code{\link[=pareto_rank]{pareto_rank()}}.}
 
 \item{coords}{Optional names of the x/longitude and y/latitude columns
 when points are tabular. Detected automatically if \code{NULL}.}
@@ -56,25 +69,36 @@ data.frame with a 0/1 column \code{obs} and one numeric column per model.}
 }
 \value{
 An object of class \code{enm_evaluation} (a data.frame) with one row per
-model and columns \code{model}, \code{AUC}, \code{MAE}, \code{bias}, \code{n_presence},
-\code{n_absence}, \code{pareto_front} (1 = non-dominated), \code{distance} (normalised
-distance to the ideal point, lower is better) and \code{rank}. With
-bootstrapping there are also \code{AUC_lower}, \code{AUC_upper}, \code{MAE_lower},
-\code{MAE_upper}, \code{AUC_sd}, \code{MAE_sd} and \code{p_pareto}. The bootstrap replicates
-are stored in \code{attr(x, "bootstrap")}.
+model and columns \code{model}, \code{AUC}, \code{MAE}, \code{bias}, \code{TSS}, \code{Boyce}, any
+extra metrics, \code{n_presence}, \code{n_absence}, \code{pareto_front} (1 =
+non-dominated on the criteria), \code{distance} (normalised distance to the
+ideal point, lower is better) and \code{rank}. With bootstrapping there are
+also \verb{<criterion>_lower}, \verb{<criterion>_upper} and \verb{<criterion>_sd} for
+each criterion, and \code{p_pareto}. The bootstrap replicates are stored in
+\code{attr(x, "bootstrap")} and the criteria in \code{attr(x, "criteria")}.
 }
 \description{
 The main entry point of the package. Extracts predictions at presence and
-absence/background points, computes the metrics recommended by Konowalik &
-Nosol (2021), and ranks models by Pareto optimality on AUC (maximised) and
-MAE (minimised).
+absence/background points, computes AUC, MAE, bias, TSS and the Boyce
+index (plus any metrics you add), and ranks models by Pareto optimality on
+the chosen \code{criteria}. The default, AUC (maximised) and MAE (minimised), is
+the combination recommended by Konowalik & Nosol (2021).
 }
 \details{
+\strong{Choosing the metrics to compare.} \code{criteria} can be any of the computed
+metrics, each with a direction: \code{"max"} (higher is better), \code{"min"}
+(lower is better) or \code{"zero"} (closer to 0 is better). For example
+\code{c(AUC = "max", TSS = "max")}, \code{c(Boyce = "max", MAE = "min")} or three
+criteria \code{c(AUC = "max", MAE = "min", bias = "zero")}. Your own metrics are
+added with \code{metrics}, e.g.
+\code{metrics = list(Brier = function(obs, pred) mean((obs - pred)^2))}, and can
+then be used in \code{criteria} (\code{c(AUC = "max", Brier = "min")}).
+
 When \code{n_boot > 0}, evaluation points are resampled with replacement
 (separately for presences and absences, so their numbers stay fixed) and all
 models are re-evaluated on each resample. This gives:
 \itemize{
-\item percentile confidence intervals for AUC and MAE, and
+\item percentile confidence intervals for every criterion, and
 \item \code{p_pareto}: the proportion of resamples in which the model lies on the
 Pareto front. It shows how robust the selection is: a model with
 \code{p_pareto = 0.95} is almost always among the best trade-offs, while
@@ -87,6 +111,17 @@ res <- evaluate_models(sim$models, sim$presence, sim$absence,
                        n_boot = 100, seed = 1)
 res
 plot_pareto(res)
+
+# compare other metrics, e.g. TSS and the Boyce index
+res2 <- evaluate_models(sim$models, sim$presence, sim$absence,
+                        criteria = c(TSS = "max", Boyce = "max"))
+plot_pareto(res2)
+
+# add your own metric and use it as a criterion
+brier <- function(obs, pred) mean((obs - pred)^2)
+res3 <- evaluate_models(sim$models, sim$presence, sim$absence,
+                        metrics = list(Brier = brier),
+                        criteria = c(AUC = "max", Brier = "min"))
 }
 \references{
 Konowalik, K., Nosol, A. (2021) Evaluation metrics and

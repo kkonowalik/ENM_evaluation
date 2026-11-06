@@ -24,7 +24,8 @@ maximum for a "lower is better" metric, add a negated column, e.g.
 \code{x$neg_MAE <- -x$MAE} and \code{min_metrics = c(neg_MAE = -0.3)}.}
 
 \item{criteria}{Named character vector giving, for each Pareto criterion,
-\code{"max"} (larger is better) or \code{"min"} (smaller is better).}
+\code{"max"} (larger is better), \code{"min"} (smaller is better) or \code{"zero"}
+(closer to 0 is better, e.g. \code{bias}).}
 
 \item{tol}{Tolerance for Pareto ties; see \code{\link[=pareto_rank]{pareto_rank()}}.}
 

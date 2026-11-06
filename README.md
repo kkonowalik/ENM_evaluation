@@ -27,7 +27,7 @@ adds statistics for choosing among models:
 | Coordinate systems | had to match manually | points re-projected to each raster automatically |
 | Metrics | AUC, MAE, bias via `Metrics` | same values, no extra dependency (checked to be identical), plus TSS and the continuous Boyce index (identical to `ecospat`) |
 | Validation | one set of evaluation points | also **spatial block cross-validation** across folds and background sets, and **temporal validation** of hindcasts against fossil or other dated records |
-| Model choice | visual inspection of a plot | conventional **minimum values** or the **Pareto front** (with a tolerance for ties), compromise distance to the ideal model, **bootstrap** confidence intervals and probability of being on the Pareto front |
+| Model choice | visual inspection of a plot | AUC vs MAE by default, or **any metrics you choose** (including your own); conventional **minimum values** or the **Pareto front** (with a tolerance for ties), compromise distance to the ideal model, **bootstrap** confidence intervals and probability of being on the Pareto front |
 | Plot | manual | ready-to-publish `ggplot2` figure |
 
 ## Installation
@@ -57,17 +57,21 @@ plot_pareto(res, zoom = TRUE)               # zoom in on the best models
 ```
 ENM evaluation: 7 model(s), 100 presence and 300 absence/background points
 Bootstrap: 500 resamples, 95% percentile intervals
-Pareto front (best AUC/MAE trade-offs): Maxent_LQ, GLM, Maxent_H_rm4
+Criteria: AUC (higher is better), MAE (lower is better)
+Pareto front (best trade-offs): Maxent_LQ, GLM, Maxent_H_rm4
 
- rank        model   AUC AUC_lower AUC_upper   MAE MAE_lower MAE_upper   bias pareto_front p_pareto distance
-    1    Maxent_LQ 0.980     0.967     0.990 0.164     0.143     0.185 -0.109            1    1.000    0.001
-    2          GLM 0.981     0.969     0.991 0.316     0.296     0.336 -0.290            1    0.386    0.234
-    3 Maxent_H_rm4 0.980     0.968     0.990 0.247     0.231     0.264 -0.146            1    0.344    0.128
-    4 RandomForest 0.978     0.964     0.989 0.204     0.193     0.216  0.027            2    0.352    0.062
-    5          GBM 0.968     0.951     0.982 0.239     0.218     0.259 -0.162            3    0.028    0.116
-    6      BIOCLIM 0.821     0.777     0.863 0.623     0.610     0.637 -0.604            4    0.000    0.739
-    7       Random 0.457     0.396     0.523 0.522     0.495     0.549 -0.261            4    0.000    0.896
+ rank        model   AUC AUC_lower AUC_upper   MAE MAE_lower MAE_upper   bias   TSS  Boyce pareto_front p_pareto distance
+    1    Maxent_LQ 0.980     0.967     0.990 0.164     0.143     0.185 -0.109 0.850  0.908            1    1.000    0.001
+    2          GLM 0.981     0.969     0.991 0.316     0.296     0.336 -0.290 0.883  0.911            1    0.386    0.234
+    3 Maxent_H_rm4 0.980     0.968     0.990 0.247     0.231     0.264 -0.146 0.857  0.961            1    0.344    0.128
+    4 RandomForest 0.978     0.964     0.989 0.204     0.193     0.216  0.027 0.877  0.941            2    0.352    0.062
+    5          GBM 0.968     0.951     0.982 0.239     0.218     0.259 -0.162 0.820  0.978            3    0.028    0.116
+    6      BIOCLIM 0.821     0.777     0.863 0.623     0.610     0.637 -0.604 0.587  0.830            4    0.000    0.739
+    7       Random 0.457     0.396     0.523 0.522     0.495     0.549 -0.261 0.033 -0.263            4    0.000    0.896
 ```
+
+In the plots, axes are oriented so that **better models are top-right**: the
+MAE axis is reversed because lower MAE is better.
 
 ![All models](man/figures/pareto_example.png)
 ![Zoomed on the best models](man/figures/pareto_zoom.png)
@@ -77,6 +81,41 @@ AUC alone cannot separate them. MAE can. `Maxent_LQ` is on the Pareto front in
 100% of bootstrap resamples, which makes it a robust choice. `GLM`,
 `Maxent_H_rm4` and `RandomForest` reach the front only about a third of the
 time.
+
+## Choosing which metrics to compare
+
+AUC vs MAE is the default, but any metric pair, or more than two metrics, can
+be compared. Give each criterion a direction: `"max"` (higher is better),
+`"min"` (lower is better) or `"zero"` (closer to 0 is better):
+
+```r
+# TSS and the Boyce index instead of AUC and MAE
+res2 <- evaluate_models(sim$models, sim$presence, sim$absence,
+                        criteria = c(TSS = "max", Boyce = "max"),
+                        n_boot = 500, seed = 1)
+plot_pareto(res2)
+
+# three criteria: AUC, MAE and bias (closer to 0 is better)
+res3 <- evaluate_models(sim$models, sim$presence, sim$absence,
+                        criteria = c(AUC = "max", MAE = "min", bias = "zero"))
+plot_pareto(res3)                         # shows AUC vs MAE, front on all three
+plot_pareto(res3, x_metric = "bias")      # any metric on either axis
+
+# your own metric, e.g. the Brier score
+brier <- function(obs, pred) mean((obs - pred)^2)
+res4 <- evaluate_models(sim$models, sim$presence, sim$absence,
+                        metrics = list(Brier = brier),
+                        criteria = c(AUC = "max", Brier = "min"))
+```
+
+![TSS vs Boyce](man/figures/pareto_tss_boyce.png)
+
+The built-in metrics are `AUC`, `MAE`, `bias`, `TSS` and `Boyce`. A custom
+metric is any `function(obs, pred)` that returns one number (`obs` is 0/1,
+`pred` the predicted suitability). The same `metrics` argument works in
+`evaluate_cv()`, and `select_models()` / `plot_selection()` take the same
+`criteria`. The bootstrap gives confidence intervals and `p_pareto` for
+whichever criteria you choose.
 
 ## Using your own data
 
@@ -229,33 +268,38 @@ Helpers for preparing the climate of each record:
 ## How the selection works
 
 1. **Metrics.** For each model, compute **AUC** (Mann–Whitney formulation,
-   higher is better), **MAE** (`mean(|obs − pred|)`, lower is better) and
-   **bias** (`mean(obs − pred)`, closer to 0 is better).
+   higher is better), **MAE** (`mean(|obs − pred|)`, lower is better),
+   **bias** (`mean(obs − pred)`, closer to 0 is better), **TSS** and the
+   **Boyce index**. AUC and MAE are the default criteria; see
+   [Choosing which metrics to compare](#choosing-which-metrics-to-compare).
 2. **Pareto front.** Model A *dominates* model B if A is at least as good on
-   both AUC and MAE and strictly better on one. Models that no other model
-   dominates form the **Pareto front**. These are the defensible choices,
-   each a different AUC/MAE trade-off. Dominated models can be discarded.
+   every criterion (by default AUC and MAE) and strictly better on one.
+   Models that no other model dominates form the **Pareto front**. These are
+   the defensible choices, each a different trade-off. With `tol`,
+   differences smaller than the tolerance count as ties. Dominated models can be discarded.
    Repeating the procedure on the remaining models gives fronts 2, 3, …
    (non-dominated sorting).
-3. **Compromise distance.** AUC and MAE are rescaled to 0–1 and each model's
-   distance to the *ideal point* (best AUC and best MAE) is computed. Use it to
+3. **Compromise distance.** The criteria are rescaled to 0–1 and each
+   model's distance to the *ideal point* (the best value of every criterion)
+   is computed. Use it to
    pick one model from the front. `weights = c(AUC = 2, MAE = 1)` makes AUC
    count twice as much.
 4. **Bootstrap robustness.** Presence and absence points are resampled with
    replacement (stratified) `n_boot` times and everything is recomputed. This
-   gives confidence intervals for AUC and MAE and **`p_pareto`**, the
+   gives confidence intervals for each criterion and **`p_pareto`**, the
    proportion of resamples in which a model is on the Pareto front. Small
-   differences in AUC/MAE between models are often within sampling noise, and
+   differences between models are often within sampling noise, and
    `p_pareto` shows how much your choice depends on the particular evaluation
    points.
 5. **Final `rank`.** Models are ordered by Pareto front, then `p_pareto`, then
    distance.
 
-`pareto_rank()` works on any table with any number of criteria, so you can add
-TSS, the Boyce index, AICc, omission rates or other metrics:
+`pareto_rank()` works on any table with any number of criteria, e.g. metrics
+computed elsewhere such as AICc or omission rates:
 
 ```r
-pareto_rank(my_table, maximize = c("AUC", "TSS"), minimize = c("MAE", "AICc"))
+pareto_rank(my_table, maximize = c("AUC", "TSS"), minimize = c("MAE", "AICc"),
+            zero = "bias")
 ```
 
 ## Upgrading from the original script

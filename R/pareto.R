@@ -27,6 +27,8 @@
 #' @param x A data.frame with one row per model.
 #' @param maximize Character vector of columns where larger is better.
 #' @param minimize Character vector of columns where smaller is better.
+#' @param zero Character vector of columns where values closer to 0 are
+#'   better (e.g. `bias`).
 #' @param weights Optional named numeric vector of criterion weights (names
 #'   must match `maximize`/`minimize`); missing names get weight 1.
 #' @param tol Differences smaller than this count as ties: one number for all
@@ -40,32 +42,20 @@
 #'                  AUC = c(0.90, 0.85, 0.80, 0.88),
 #'                  MAE = c(0.30, 0.20, 0.25, 0.32))
 #' pareto_rank(df, maximize = "AUC", minimize = "MAE")
-pareto_rank <- function(x, maximize = "AUC", minimize = "MAE",
+pareto_rank <- function(x, maximize = "AUC", minimize = "MAE", zero = NULL,
                         weights = NULL, tol = 0) {
-  crit <- c(maximize, minimize)
+  crit <- c(maximize, minimize, zero)
   if (length(crit) < 1) stop("Specify at least one criterion.", call. = FALSE)
   miss <- setdiff(crit, names(x))
   if (length(miss)) {
     stop("Columns not found: ", paste(miss, collapse = ", "), call. = FALSE)
   }
-  # Convert everything to "smaller is better"
-  m <- as.matrix(x[crit])
-  storage.mode(m) <- "double"
-  m[, seq_along(maximize)] <- -m[, seq_along(maximize)]
-
-  x$pareto_front <- pareto_fronts(m, tol = expand_tol(tol, crit))
-
-  w <- stats::setNames(rep(1, length(crit)), crit)
-  if (!is.null(weights)) {
-    w[intersect(names(weights), crit)] <- weights[intersect(names(weights),
-                                                           crit)]
-  }
-  norm <- apply(m, 2, function(v) {
-    r <- range(v, na.rm = TRUE)
-    if (diff(r) == 0) rep(0, length(v)) else (v - r[1]) / diff(r)
-  })
-  norm <- matrix(norm, nrow = nrow(m))
-  x$distance <- sqrt(rowSums(sweep(norm^2, 2, w, `*`))) / sqrt(sum(w))
+  criteria <- stats::setNames(
+    rep(c("max", "min", "zero"),
+        c(length(maximize), length(minimize), length(zero))), crit)
+  pc <- pareto_core(to_minimise(x, criteria), weights = weights, tol = tol)
+  x$pareto_front <- pc$front
+  x$distance <- pc$distance
 
   x[order(x$pareto_front, x$distance), , drop = FALSE]
 }

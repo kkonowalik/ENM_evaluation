@@ -11,7 +11,8 @@ evaluate_cv(
   set = NULL,
   obs = "obs",
   pred = "pred",
-  threshold = NULL
+  threshold = NULL,
+  metrics = NULL
 )
 }
 \arguments{
@@ -38,6 +39,10 @@ TSS-optimal or 10th-percentile threshold found on that run's
 \emph{calibration} data, as biomod2 does for its validation TSS). Without it,
 TSS uses the best threshold on the held-out data, which is slightly
 optimistic.}
+
+\item{metrics}{Optional named list of extra metric functions
+\verb{function(obs, pred)}, computed per run and summarised like the
+built-in ones (see \code{\link[=evaluate_models]{evaluate_models()}}).}
 }
 \value{
 An object of class \code{enm_cv}: a data.frame with one row per model,

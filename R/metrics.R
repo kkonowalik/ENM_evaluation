@@ -170,15 +170,9 @@ threshold_p10 <- function(pred_presence, p = 0.1) {
 }
 
 # Compute all metrics for one model (internal)
-metric_row <- function(obs, pred) {
+metric_row <- function(obs, pred, extra = list()) {
   ok <- !is.na(pred)
-  obs <- obs[ok]
-  pred <- pred[ok]
-  c(AUC = auc_score(obs, pred),
-    MAE = mae_score(obs, pred),
-    bias = bias_score(obs, pred),
-    TSS = tss_score(obs, pred)[1],
-    Boyce = boyce_index(pred[obs == 1], pred[obs == 0]),
-    n_presence = sum(obs == 1),
-    n_absence = sum(obs == 0))
+  c(compute_metrics(obs, pred, c(builtin_metrics(), extra)),
+    n_presence = sum(obs[ok] == 1),
+    n_absence = sum(obs[ok] == 0))
 }

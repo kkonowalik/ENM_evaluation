@@ -4,7 +4,14 @@
 \alias{pareto_rank}
 \title{Pareto ranking and compromise score for multi-criteria model selection}
 \usage{
-pareto_rank(x, maximize = "AUC", minimize = "MAE", weights = NULL, tol = 0)
+pareto_rank(
+  x,
+  maximize = "AUC",
+  minimize = "MAE",
+  zero = NULL,
+  weights = NULL,
+  tol = 0
+)
 }
 \arguments{
 \item{x}{A data.frame with one row per model.}
@@ -12,6 +19,9 @@ pareto_rank(x, maximize = "AUC", minimize = "MAE", weights = NULL, tol = 0)
 \item{maximize}{Character vector of columns where larger is better.}
 
 \item{minimize}{Character vector of columns where smaller is better.}
+
+\item{zero}{Character vector of columns where values closer to 0 are
+better (e.g. \code{bias}).}
 
 \item{weights}{Optional named numeric vector of criterion weights (names
 must match \code{maximize}/\code{minimize}); missing names get weight 1.}

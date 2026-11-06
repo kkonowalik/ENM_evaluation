@@ -1,3 +1,20 @@
+# ENMselect 1.2.0
+
+* Choose which metrics to compare: `evaluate_models(criteria = ...)` accepts
+  any metrics with a direction, `"max"`, `"min"` or the new `"zero"` (closer
+  to 0 is better, e.g. `bias`). The default is still AUC vs MAE. The Pareto
+  front, compromise distance, bootstrap intervals and `p_pareto` all follow
+  the chosen criteria; `tol` is also available.
+* Add your own metrics with `metrics = list(name = function(obs, pred) ...)`
+  in `evaluate_models()` and `evaluate_cv()`.
+* `plot_pareto()` gains `x_metric` / `y_metric`, defaults to the chosen
+  criteria and orients axes so that better models are top-right (the MAE axis
+  is now reversed, matching `plot_selection()`).
+* `select_models()` and `pareto_rank()` support "closer to 0 is better"
+  criteria (`"zero"` / `zero =`).
+* `evaluate_models(weights = )` now defaults to equal weights for whichever
+  criteria are used.
+
 # ENMselect 1.1.0
 
 New tools generalised from a full biomod2 workflow (spatial cross-validation,

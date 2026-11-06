@@ -1,14 +1,23 @@
 # Visualisation ---------------------------------------------------------------
 
-#' Plot models in AUC-MAE space with the Pareto front
+#' Plot models in the space of two metrics with the Pareto front
 #'
-#' Each model is a point (x = MAE, y = AUC); the best models sit towards the
-#' **top-left**. The Pareto front connects the non-dominated models. With a
-#' bootstrapped evaluation, bars show the confidence intervals and the fill
-#' shows `p_pareto`, the share of resamples in which the model was on the
-#' front.
+#' Each model is a point; by default x = MAE and y = AUC, the comparison of
+#' Konowalik & Nosol (2021), but any two metrics can be shown. Axes are
+#' oriented so that **better models are towards the top-right** ("lower is
+#' better" axes are reversed). The dashed line connects the models on the
+#' Pareto front. With a bootstrapped evaluation, bars show the confidence
+#' intervals and the fill shows `p_pareto`, the share of resamples in which
+#' the model was on the front.
+#'
+#' By default the axes are the first two `criteria` used in
+#' [evaluate_models()]. If more than two criteria were used, the front was
+#' computed on all of them, so front models may look dominated in a 2-D plot
+#' and no front line is drawn.
 #'
 #' @param x An `enm_evaluation` object from [evaluate_models()].
+#' @param x_metric,y_metric Metrics (columns of `x`) for the axes. Default:
+#'   the second and first criterion (MAE and AUC for the default criteria).
 #' @param labels Which models to label: `"all"`, `"front"` (Pareto models only)
 #'   or `"none"`. Default: all when there are 15 models or fewer, otherwise
 #'   front only.
@@ -24,43 +33,68 @@
 #' sim <- simulate_enm_data(seed = 1)
 #' res <- evaluate_models(sim$models, sim$presence, sim$absence,
 #'                        n_boot = 100, seed = 1)
-#' p <- plot_pareto(res)
-#' p
-#' # ggplot2::ggsave("pareto.png", p, width = 7, height = 5, dpi = 300)
-plot_pareto <- function(x, labels = NULL, error_bars = TRUE, zoom = FALSE,
-                        base_size = 12) {
+#' plot_pareto(res)
+#' plot_pareto(res, x_metric = "TSS")   # any other metric on an axis
+#' # ggplot2::ggsave("pareto.png", plot_pareto(res), width = 7, height = 5,
+#' #                 dpi = 300)
+plot_pareto <- function(x, x_metric = NULL, y_metric = NULL, labels = NULL,
+                        error_bars = TRUE, zoom = FALSE, base_size = 12) {
   if (!inherits(x, "enm_evaluation")) {
     stop("`x` must be the output of evaluate_models().", call. = FALSE)
   }
+  crit <- attr(x, "criteria")
+  if (is.null(crit)) crit <- c(AUC = "max", MAE = "min")
+  if (is.null(y_metric)) y_metric <- names(crit)[1]
+  if (is.null(x_metric)) {
+    x_metric <- if (length(crit) > 1) names(crit)[2] else
+      setdiff(c("MAE", "AUC"), y_metric)[1]
+  }
   df <- as.data.frame(x)
+  miss <- setdiff(c(x_metric, y_metric), names(df))
+  if (length(miss)) {
+    stop("Columns not found: ", paste(miss, collapse = ", "), call. = FALSE)
+  }
+  dirs <- c(x = dir_of(x_metric, crit), y = dir_of(y_metric, crit))
+  dirs[is.na(dirs)] <- "none"
   if (is.null(labels)) labels <- if (nrow(df) <= 15) "all" else "front"
   labels <- match.arg(labels, c("all", "front", "none"))
   has_boot <- "p_pareto" %in% names(df)
 
+  df$.x <- df[[x_metric]]
+  df$.y <- df[[y_metric]]
   df$status <- factor(ifelse(df$pareto_front == 1, "Pareto front",
                              "Dominated"),
                       levels = c("Pareto front", "Dominated"))
   front <- df[df$pareto_front == 1, , drop = FALSE]
-  front <- front[order(front$MAE), , drop = FALSE]
-
   ink <- "#3a3a38"
   muted <- "#8a8a86"
 
-  p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$MAE, y = .data$AUC))
+  p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$.x, y = .data$.y))
 
-  if (nrow(front) > 1) {
-    p <- p + ggplot2::geom_step(data = front, direction = "vh",
+  # staircase of the front: only meaningful when the plotted metrics are
+  # exactly the criteria and both are "max"/"min"
+  if (nrow(front) > 1 && setequal(names(crit), c(x_metric, y_metric)) &&
+      all(dirs %in% c("max", "min"))) {
+    p <- p + ggplot2::geom_path(data = front_path(front, dirs),
+                                ggplot2::aes(x = .data$x, y = .data$y),
                                 colour = muted, linewidth = 0.6,
                                 linetype = "dashed")
   }
+  lo <- function(m) paste0(m, "_lower")
+  up <- function(m) paste0(m, "_upper")
   if (has_boot && error_bars) {
-    p <- p +
-      ggplot2::geom_errorbar(ggplot2::aes(ymin = .data$AUC_lower,
-                                          ymax = .data$AUC_upper),
-                             width = 0, colour = muted, linewidth = 0.4) +
-      ggplot2::geom_errorbarh(ggplot2::aes(xmin = .data$MAE_lower,
-                                           xmax = .data$MAE_upper),
-                              height = 0, colour = muted, linewidth = 0.4)
+    if (all(c(lo(y_metric), up(y_metric)) %in% names(df))) {
+      p <- p + ggplot2::geom_errorbar(
+        ggplot2::aes(ymin = .data[[lo(y_metric)]],
+                     ymax = .data[[up(y_metric)]]),
+        width = 0, colour = muted, linewidth = 0.4)
+    }
+    if (all(c(lo(x_metric), up(x_metric)) %in% names(df))) {
+      p <- p + ggplot2::geom_errorbarh(
+        ggplot2::aes(xmin = .data[[lo(x_metric)]],
+                     xmax = .data[[up(x_metric)]]),
+        height = 0, colour = muted, linewidth = 0.4)
+    }
   }
   if (has_boot) {
     p <- p +
@@ -80,54 +114,94 @@ plot_pareto <- function(x, labels = NULL, error_bars = TRUE, zoom = FALSE,
                                             "Dominated" = "#a3a39e"),
                                  name = NULL, drop = FALSE)
   }
+  # with a bootstrap, fill shows p_pareto, so the shape legend gets a neutral
+  # fill; without, fill and shape both show the status and share one legend
   p <- p + ggplot2::scale_shape_manual(
     values = c("Pareto front" = 21, "Dominated" = 22), name = NULL,
-    drop = FALSE, guide = ggplot2::guide_legend(
-      order = 1, override.aes = list(fill = "#5c5c58", colour = "#5c5c58")))
+    drop = FALSE, guide = if (has_boot) {
+      ggplot2::guide_legend(order = 1, override.aes = list(
+        fill = "#5c5c58", colour = "#5c5c58"))
+    } else "legend")
+  zero_ref <- c(x = "x", y = "y")[dirs == "zero"]
+  if ("x" %in% zero_ref) {
+    p <- p + ggplot2::geom_vline(xintercept = 0, colour = muted,
+                                 linewidth = 0.4, linetype = "dotted")
+  }
+  if ("y" %in% zero_ref) {
+    p <- p + ggplot2::geom_hline(yintercept = 0, colour = muted,
+                                 linewidth = 0.4, linetype = "dotted")
+  }
 
   if (labels != "none") {
-    lab <- if (labels == "front") front else df
-    if (requireNamespace("ggrepel", quietly = TRUE)) {
-      p <- p + ggrepel::geom_text_repel(
-        data = lab, ggplot2::aes(label = .data$model), colour = ink,
-        size = base_size / 3.6, box.padding = 0.5, min.segment.length = 0.2,
-        segment.colour = muted, segment.size = 0.3, seed = 1,
-        max.overlaps = Inf)
-    } else {
-      p <- p + ggplot2::geom_text(data = lab,
-                                  ggplot2::aes(label = .data$model),
-                                  colour = ink, size = base_size / 3.6,
-                                  vjust = -1.1)
-    }
+    p <- p + label_layer(if (labels == "front") front else df, ink, muted,
+                         base_size)
   }
 
-  sub <- if (has_boot) {
-    sprintf("Bars: %d%% bootstrap intervals (%d resamples). Better models are top-left.",
-            round(100 * attr(x, "conf")), attr(x, "n_boot"))
-  } else {
-    "Better models are top-left (high AUC, low MAE)."
-  }
+  if (dirs[["x"]] == "min") p <- p + ggplot2::scale_x_reverse()
+  if (dirs[["y"]] == "min") p <- p + ggplot2::scale_y_reverse()
   if (zoom) {
     z <- df[df$pareto_front <= 2, , drop = FALSE]
-    xr <- range(c(z$MAE, z$MAE_lower, z$MAE_upper), na.rm = TRUE)
-    yr <- range(c(z$AUC, z$AUC_lower, z$AUC_upper), na.rm = TRUE)
+    rng <- function(m) range(c(z[[m]], z[[lo(m)]], z[[up(m)]]), na.rm = TRUE)
     pad <- function(r) r + c(-1, 1) * max(diff(r), 1e-3) * 0.15
-    p <- p + ggplot2::coord_cartesian(xlim = pad(xr), ylim = pad(yr))
+    # with a reversed axis the limits must be given in reversed order too
+    lim <- function(m, d) if (d == "min") rev(pad(rng(m))) else pad(rng(m))
+    p <- p + ggplot2::coord_cartesian(xlim = lim(x_metric, dirs[["x"]]),
+                                      ylim = lim(y_metric, dirs[["y"]]))
   }
 
+  sub <- c(
+    if (length(crit) > 2) {
+      paste0("Pareto front on ", length(crit), " criteria: ",
+             paste(names(crit), collapse = ", "), ".")
+    },
+    if (has_boot) {
+      sprintf("Bars: %d%% bootstrap intervals (%d resamples).",
+              round(100 * attr(x, "conf")), attr(x, "n_boot"))
+    },
+    better_text(dirs, x_metric, y_metric))
   p +
-    ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0.05, 0.12))) +
-    ggplot2::labs(x = "MAE (lower is better)", y = "AUC (higher is better)",
-                  title = "Model selection: AUC vs MAE", subtitle = sub) +
-    ggplot2::theme_minimal(base_size = base_size) +
-    ggplot2::theme(
-      panel.grid.minor = ggplot2::element_blank(),
-      panel.grid.major = ggplot2::element_line(colour = "#e6e5e1",
-                                               linewidth = 0.3),
-      plot.background = ggplot2::element_rect(fill = "white", colour = NA),
-      text = ggplot2::element_text(colour = ink),
-      plot.subtitle = ggplot2::element_text(colour = muted),
-      legend.position = "right")
+    ggplot2::labs(x = axis_label(x_metric, dirs[["x"]]),
+                  y = axis_label(y_metric, dirs[["y"]]),
+                  title = paste("Model comparison:", y_metric, "vs", x_metric),
+                  subtitle = paste(sub, collapse = "\n")) +
+    theme_enm(base_size, ink, muted)
+}
+
+# Direction of a metric: from the criteria, else the package default
+dir_of <- function(m, crit) {
+  if (m %in% names(crit)) return(crit[[m]])
+  if (m %in% names(default_directions)) return(default_directions[[m]])
+  NA_character_
+}
+
+axis_label <- function(m, dir) {
+  if (is.na(dir) || dir == "none") m else paste0(m, " (", direction_label(dir), ")")
+}
+
+better_text <- function(dirs, x_metric, y_metric) {
+  if (all(dirs %in% c("max", "min"))) {
+    return("Better models are top-right.")
+  }
+  part <- function(m, d) switch(d, max = paste("higher", m),
+                                min = paste("lower", m),
+                                zero = paste(m, "closer to 0"), NULL)
+  bits <- c(part(y_metric, dirs[["y"]]), part(x_metric, dirs[["x"]]))
+  if (length(bits)) paste0("Better: ", paste(bits, collapse = ", "), ".")
+}
+
+# Staircase through the front, drawn in data units (internal)
+front_path <- function(front, dirs) {
+  g <- function(v, d) if (d == "max") v else -v      # "higher is better"
+  gx <- g(front$.x, dirs[["x"]])
+  gy <- g(front$.y, dirs[["y"]])
+  o <- order(gx, -gy)
+  fx <- front$.x[o]
+  fy <- front$.y[o]
+  n <- length(fx)
+  # from each front point: move along y to the next point's level, then x
+  px <- c(rbind(fx[-n], fx[-n]), fx[n])
+  py <- c(rbind(fy[-n], fy[-1]), fy[n])
+  data.frame(x = px, y = py)
 }
 
 #' @importFrom rlang .data
@@ -174,11 +248,8 @@ plot_selection <- function(x, x_metric = "MAE", y_metric = "AUC",
   mins <- attr(x, "min_metrics")
   ink <- "#3a3a38"
   muted <- "#8a8a86"
-  axis_lab <- function(m) {
-    dir <- if (m %in% names(crit)) crit[[m]] else NA
-    if (is.na(dir)) m else paste0(m, if (dir == "max") " (higher is better)"
-                                  else " (lower is better)")
-  }
+  dirs <- c(x = dir_of(x_metric, crit), y = dir_of(y_metric, crit))
+  dirs[is.na(dirs)] <- "none"
 
   p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$.x, y = .data$.y))
   if (x_metric %in% names(mins)) {
@@ -220,18 +291,15 @@ plot_selection <- function(x, x_metric = "MAE", y_metric = "AUC",
                                 guide = ggplot2::guide_legend(
                                   override.aes = list(fill = "#5c5c58")))
   if (labels) p <- p + label_layer(df, ink, muted, base_size)
-  if (x_metric %in% names(crit) && crit[[x_metric]] == "min") {
-    p <- p + ggplot2::scale_x_reverse()
-  }
-  if (y_metric %in% names(crit) && crit[[y_metric]] == "min") {
-    p <- p + ggplot2::scale_y_reverse()
-  }
+  if (dirs[["x"]] == "min") p <- p + ggplot2::scale_x_reverse()
+  if (dirs[["y"]] == "min") p <- p + ggplot2::scale_y_reverse()
   p +
-    ggplot2::labs(x = axis_lab(x_metric), y = axis_lab(y_metric),
+    ggplot2::labs(x = axis_label(x_metric, dirs[["x"]]),
+                  y = axis_label(y_metric, dirs[["y"]]),
                   title = paste("Model selection:", y_metric, "vs", x_metric),
                   subtitle = paste0(
-                    "Selection rule: ", attr(x, "rule"),
-                    ". Better models are top-right.\n",
+                    "Selection rule: ", attr(x, "rule"), ". ",
+                    better_text(dirs, x_metric, y_metric), "\n",
                     if (length(mins)) "Dashed lines: minimum values. ",
                     if (ys %in% names(df) || xs %in% names(df))
                       "Bars: \u00b11 SD across runs.")) +

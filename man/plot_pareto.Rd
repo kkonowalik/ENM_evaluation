@@ -2,12 +2,23 @@
 % Please edit documentation in R/plot.R
 \name{plot_pareto}
 \alias{plot_pareto}
-\title{Plot models in AUC-MAE space with the Pareto front}
+\title{Plot models in the space of two metrics with the Pareto front}
 \usage{
-plot_pareto(x, labels = NULL, error_bars = TRUE, zoom = FALSE, base_size = 12)
+plot_pareto(
+  x,
+  x_metric = NULL,
+  y_metric = NULL,
+  labels = NULL,
+  error_bars = TRUE,
+  zoom = FALSE,
+  base_size = 12
+)
 }
 \arguments{
 \item{x}{An \code{enm_evaluation} object from \code{\link[=evaluate_models]{evaluate_models()}}.}
+
+\item{x_metric, y_metric}{Metrics (columns of \code{x}) for the axes. Default:
+the second and first criterion (MAE and AUC for the default criteria).}
 
 \item{labels}{Which models to label: \code{"all"}, \code{"front"} (Pareto models only)
 or \code{"none"}. Default: all when there are 15 models or fewer, otherwise
@@ -26,17 +37,26 @@ A \code{ggplot} object that can be customised further or saved with
 \code{\link[ggplot2:ggsave]{ggplot2::ggsave()}}.
 }
 \description{
-Each model is a point (x = MAE, y = AUC); the best models sit towards the
-\strong{top-left}. The Pareto front connects the non-dominated models. With a
-bootstrapped evaluation, bars show the confidence intervals and the fill
-shows \code{p_pareto}, the share of resamples in which the model was on the
-front.
+Each model is a point; by default x = MAE and y = AUC, the comparison of
+Konowalik & Nosol (2021), but any two metrics can be shown. Axes are
+oriented so that \strong{better models are towards the top-right} ("lower is
+better" axes are reversed). The dashed line connects the models on the
+Pareto front. With a bootstrapped evaluation, bars show the confidence
+intervals and the fill shows \code{p_pareto}, the share of resamples in which
+the model was on the front.
+}
+\details{
+By default the axes are the first two \code{criteria} used in
+\code{\link[=evaluate_models]{evaluate_models()}}. If more than two criteria were used, the front was
+computed on all of them, so front models may look dominated in a 2-D plot
+and no front line is drawn.
 }
 \examples{
 sim <- simulate_enm_data(seed = 1)
 res <- evaluate_models(sim$models, sim$presence, sim$absence,
                        n_boot = 100, seed = 1)
-p <- plot_pareto(res)
-p
-# ggplot2::ggsave("pareto.png", p, width = 7, height = 5, dpi = 300)
+plot_pareto(res)
+plot_pareto(res, x_metric = "TSS")   # any other metric on an axis
+# ggplot2::ggsave("pareto.png", plot_pareto(res), width = 7, height = 5,
+#                 dpi = 300)
 }

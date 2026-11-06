@@ -33,7 +33,8 @@
 #'   maximum for a "lower is better" metric, add a negated column, e.g.
 #'   `x$neg_MAE <- -x$MAE` and `min_metrics = c(neg_MAE = -0.3)`.
 #' @param criteria Named character vector giving, for each Pareto criterion,
-#'   `"max"` (larger is better) or `"min"` (smaller is better).
+#'   `"max"` (larger is better), `"min"` (smaller is better) or `"zero"`
+#'   (closer to 0 is better, e.g. `bias`).
 #' @param tol Tolerance for Pareto ties; see [pareto_rank()].
 #' @param override Optional character vector of model names to select by
 #'   hand. The rules are still computed and reported.
@@ -57,10 +58,7 @@ select_models <- function(x, rule = c("threshold", "pareto"),
   if (!"model" %in% names(x)) {
     stop("`x` needs a `model` column.", call. = FALSE)
   }
-  if (!all(criteria %in% c("max", "min")) || is.null(names(criteria))) {
-    stop("`criteria` must be a named vector of \"max\"/\"min\", e.g. ",
-         "c(AUC = \"max\", MAE = \"min\").", call. = FALSE)
-  }
+  check_criteria(criteria, names(criteria))
 
   # rule 1: minimum values
   miss <- setdiff(names(min_metrics), names(x))
@@ -86,13 +84,7 @@ select_models <- function(x, rule = c("threshold", "pareto"),
   crit <- criteria[names(criteria) %in% names(x)]
   if (!length(crit)) stop("None of the `criteria` are columns of `x`.",
                           call. = FALSE)
-  m <- vapply(names(crit), function(k) {
-    v <- as.numeric(x[[k]])
-    if (crit[[k]] == "max") v <- -v
-    v[is.na(v)] <- Inf
-    v
-  }, numeric(nrow(x)))
-  m <- matrix(m, nrow = nrow(x))
+  m <- to_minimise(x, crit)
   x$pareto <- pareto_fronts(m, tol = expand_tol(tol, names(crit))) == 1
   x$rank_mean <- rowMeans(apply(m, 2, rank, ties.method = "average"))
 

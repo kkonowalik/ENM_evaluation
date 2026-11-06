@@ -132,6 +132,9 @@ spatial_folds <- function(points, k = 5, block_size, occ = NULL,
 #'   *calibration* data, as biomod2 does for its validation TSS). Without it,
 #'   TSS uses the best threshold on the held-out data, which is slightly
 #'   optimistic.
+#' @param metrics Optional named list of extra metric functions
+#'   `function(obs, pred)`, computed per run and summarised like the
+#'   built-in ones (see [evaluate_models()]).
 #' @return An object of class `enm_cv`: a data.frame with one row per model,
 #'   the mean of each metric over runs, their SDs (`AUC_sd`, ...), `n_runs`
 #'   and, when available, `AUC_sd_folds` and `AUC_sd_sets`. Per-run metrics
@@ -148,7 +151,9 @@ spatial_folds <- function(points, k = 5, block_size, occ = NULL,
 #'                  rnorm(400)), runif(400))
 #' evaluate_cv(d)
 evaluate_cv <- function(data, model = "model", fold = "fold", set = NULL,
-                        obs = "obs", pred = "pred", threshold = NULL) {
+                        obs = "obs", pred = "pred", threshold = NULL,
+                        metrics = NULL) {
+  extra <- check_extra_metrics(metrics)
   cols <- c(model, fold, set, obs, pred, threshold)
   miss <- setdiff(cols, names(data))
   if (length(miss)) {
@@ -164,7 +169,7 @@ evaluate_cv <- function(data, model = "model", fold = "fold", set = NULL,
                      lex.order = TRUE, sep = "\r")
   idx <- split(seq_len(nrow(data)), key)
   runs <- do.call(rbind, lapply(idx, function(i) {
-    m <- metric_row(data[[obs]][i], data[[pred]][i])
+    m <- metric_row(data[[obs]][i], data[[pred]][i], extra)
     if (!is.null(threshold)) {
       thr <- unique(data[[threshold]][i])
       if (length(thr) != 1) {
@@ -188,7 +193,7 @@ evaluate_cv <- function(data, model = "model", fold = "fold", set = NULL,
             "the means.", call. = FALSE)
   }
 
-  mets <- c("AUC", "MAE", "bias", "TSS", "Boyce")
+  mets <- c(names(builtin_metrics()), names(extra))
   out <- do.call(rbind, lapply(split(runs, factor(runs$model,
                                                   unique(runs$model))),
                                function(r) {
