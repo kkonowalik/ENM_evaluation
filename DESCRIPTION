@@ -1,0 +1,33 @@
+Package: enmpareto
+Type: Package
+Title: Evaluate and Select Species Distribution Models with AUC, MAE and Pareto Optimality
+Version: 1.0.0
+Authors@R: c(
+    person("Kamil", "Konowalik", role = c("aut", "cre"),
+           email = "kamil.konowalik@gmail.com"),
+    person("Agata", "Nosol", role = "aut"))
+Description: Tools to evaluate presence-only (or presence-absence) species
+    distribution models / ecological niche models using the simultaneous use of
+    the area under the ROC curve (AUC) and the mean absolute error (MAE), as
+    proposed in Konowalik and Nosol (2021) <doi:10.1038/s41598-020-80062-1>.
+    Models are compared through Pareto (non-dominated) ranking, a compromise
+    distance to the ideal point, and bootstrap resampling of evaluation points
+    that quantifies how robust the selection of each model is.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends: R (>= 4.1.0)
+Imports:
+    terra (>= 1.7-0),
+    ggplot2 (>= 3.4.0),
+    rlang,
+    stats,
+    utils
+Suggests:
+    ggrepel,
+    sf,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+URL: https://github.com/kkonowalik/ENM_evaluation
+BugReports: https://github.com/kkonowalik/ENM_evaluation/issues
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
