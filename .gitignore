@@ -3,4 +3,4 @@
 .RData
 .Ruserdata
 *.Rcheck/
-enmpareto_*.tar.gz
+ENMselect_*.tar.gz

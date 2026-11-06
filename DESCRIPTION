@@ -1,6 +1,6 @@
-Package: enmpareto
+Package: ENMselect
 Type: Package
-Title: Evaluate and Select Species Distribution Models with AUC, MAE and Pareto Optimality
+Title: Evaluate and Select Species Distribution Models Using AUC and MAE
 Version: 1.0.0
 Authors@R:
     person("Kamil", "Konowalik", role = c("aut", "cre", "cph"),

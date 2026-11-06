@@ -1,4 +1,4 @@
-# enmpareto: choosing species distribution models with AUC, MAE and Pareto optimality
+# ENMselect: evaluating and choosing species distribution models with AUC and MAE
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/kkonowalik/ENM_evaluation/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/kkonowalik/ENM_evaluation/actions/workflows/R-CMD-check.yaml)
@@ -20,7 +20,7 @@ AUC and still be badly calibrated, and MAE reveals this.
 This package turns the original script into a tool anyone can install, and
 adds statistics for choosing among models:
 
-| | Original script (2021) | `enmpareto` |
+| | Original script (2021) | `ENMselect` |
 |---|---|---|
 | Spatial packages | `raster`, `sp`, `rgdal` (retired in 2023) | **`terra`** (current standard); `sf` objects accepted |
 | Input | one raster at a time, fixed CSV columns | many models at once; GeoTIFF paths, `SpatRaster`, CSV, `sf`, GBIF-style columns detected automatically |
@@ -43,7 +43,7 @@ install.packages("ggrepel")   # optional: neater labels in plots
 ## Quick start with example data
 
 ```r
-library(enmpareto)
+library(ENMselect)
 
 sim <- simulate_enm_data(seed = 1)          # 7 example "models" + points
 res <- evaluate_models(sim$models, sim$presence, sim$absence,
@@ -89,7 +89,7 @@ You need three things, as before:
    pseudo-absence points.
 
 ```r
-library(enmpareto)
+library(ENMselect)
 
 models <- c(maxent  = "M:/GIS/models/maxent_model.tif",
             glm     = "M:/GIS/models/glm_model.tif",
@@ -173,14 +173,14 @@ obs  <- c(rep(1, nrow(pres)), rep(0, nrow(abs)))
 pred <- extract(r, project(pts, r), ID = FALSE)[[1]]
 ok   <- !is.na(pred)
 
-enmpareto::auc_score(obs[ok], pred[ok])
-enmpareto::mae_score(obs[ok], pred[ok])
-enmpareto::bias_score(obs[ok], pred[ok])
+ENMselect::auc_score(obs[ok], pred[ok])
+ENMselect::mae_score(obs[ok], pred[ok])
+ENMselect::bias_score(obs[ok], pred[ok])
 ```
 
 ## Citation
 
-If you use this method, please cite the paper (`citation("enmpareto")`):
+If you use this method, please cite the paper (`citation("ENMselect")`):
 
 > Konowalik, K., Nosol, A. (2021). Evaluation metrics and validation of
 > presence-only species distribution models based on distributional maps with

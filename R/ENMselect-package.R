@@ -1,4 +1,4 @@
-#' enmpareto: Evaluate and select species distribution models
+#' ENMselect: Evaluate and select species distribution models
 #'
 #' Main functions:
 #' * [evaluate_models()]: AUC, MAE and bias for one or many models, Pareto
@@ -9,7 +9,7 @@
 #' * [simulate_enm_data()]: example data.
 #'
 #' Please cite Konowalik & Nosol (2021) \doi{10.1038/s41598-020-80062-1}
-#' when using this package (see `citation("enmpareto")`).
+#' when using this package (see `citation("ENMselect")`).
 #'
 #' @keywords internal
 "_PACKAGE"
