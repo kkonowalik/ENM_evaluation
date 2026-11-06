@@ -29,12 +29,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Kamil Konowalik \email{kamil.konowalik@gmail.com}
-
-Authors:
-\itemize{
-  \item Agata Nosol
-}
+\strong{Maintainer}: Kamil Konowalik \email{kamil.konowalik@gmail.com} [copyright holder]
 
 }
 \keyword{internal}

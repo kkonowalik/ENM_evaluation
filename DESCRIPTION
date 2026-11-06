@@ -2,10 +2,9 @@ Package: enmpareto
 Type: Package
 Title: Evaluate and Select Species Distribution Models with AUC, MAE and Pareto Optimality
 Version: 1.0.0
-Authors@R: c(
-    person("Kamil", "Konowalik", role = c("aut", "cre"),
-           email = "kamil.konowalik@gmail.com"),
-    person("Agata", "Nosol", role = "aut"))
+Authors@R:
+    person("Kamil", "Konowalik", role = c("aut", "cre", "cph"),
+           email = "kamil.konowalik@gmail.com")
 Description: Tools to evaluate presence-only (or presence-absence) species
     distribution models / ecological niche models using the simultaneous use of
     the area under the ROC curve (AUC) and the mean absolute error (MAE), as
