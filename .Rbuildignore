@@ -4,3 +4,4 @@
 ^LICENSE\.md$
 ^README\.md$
 ^man/figures/README-.*\.R$
+^Rplots\.pdf$

@@ -90,10 +90,10 @@ plot_pareto <- function(x, x_metric = NULL, y_metric = NULL, labels = NULL,
         width = 0, colour = muted, linewidth = 0.4)
     }
     if (all(c(lo(x_metric), up(x_metric)) %in% names(df))) {
-      p <- p + ggplot2::geom_errorbarh(
+      p <- p + ggplot2::geom_errorbar(
         ggplot2::aes(xmin = .data[[lo(x_metric)]],
                      xmax = .data[[up(x_metric)]]),
-        height = 0, colour = muted, linewidth = 0.4)
+        orientation = "y", width = 0, colour = muted, linewidth = 0.4)
     }
   }
   if (has_boot) {
@@ -271,10 +271,10 @@ plot_selection <- function(x, x_metric = "MAE", y_metric = "AUC",
       width = 0, colour = muted, linewidth = 0.4)
   }
   if (xs %in% names(df)) {
-    p <- p + ggplot2::geom_errorbarh(
+    p <- p + ggplot2::geom_errorbar(
       ggplot2::aes(xmin = .data$.x - .data[[xs]],
                    xmax = .data$.x + .data[[xs]]),
-      height = 0, colour = muted, linewidth = 0.4)
+      orientation = "y", width = 0, colour = muted, linewidth = 0.4)
   }
   p <- p +
     ggplot2::geom_point(ggplot2::aes(fill = .data$status,

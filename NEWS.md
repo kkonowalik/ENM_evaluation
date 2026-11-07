@@ -1,3 +1,17 @@
+# preENM 2.0.0
+
+* The package is renamed from `ENMselect` to **`preENM`** and the repository
+  moved to <https://github.com/kkonowalik/preENM>. The package will grow into a
+  toolkit for data preparation for ENM/SDM (point filtering, background point
+  selection, environmental thinning, correlation analysis); the existing
+  evaluation and model-selection functions are unchanged. Replace
+  `library(ENMselect)` with `library(preENM)`.
+* New hex logo.
+* Horizontal error bars use `geom_errorbar(orientation = "y")` instead of
+  `geom_errorbarh()`, which is deprecated in ggplot2 4.0.
+* `Metrics` is declared in Suggests (used only in a test that checks AUC, MAE
+  and bias against it).
+
 # ENMselect 1.2.0
 
 * Choose which metrics to compare: `evaluate_models(criteria = ...)` accepts

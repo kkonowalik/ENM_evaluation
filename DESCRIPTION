@@ -1,20 +1,22 @@
-Package: ENMselect
+Package: preENM
 Type: Package
-Title: Evaluate and Select Species Distribution Models Using AUC and MAE
-Version: 1.2.0
+Title: Data Preparation and Model Selection for Ecological Niche and Species
+    Distribution Models
+Version: 2.0.0
 Authors@R:
     person("Kamil", "Konowalik", role = c("aut", "cre", "cph"),
            email = "kamil.konowalik@gmail.com")
-Description: Tools to evaluate and select species distribution models /
-    ecological niche models built with any software. Implements the
-    simultaneous use of the area under the ROC curve (AUC) and the mean
-    absolute error (MAE) proposed in Konowalik and Nosol (2021)
-    <doi:10.1038/s41598-020-80062-1>, together with the true skill statistic
-    and the continuous Boyce index. Supports spatial block cross-validation
-    across folds and background sets, temporal validation of hindcasts against
-    dated (e.g. fossil) records matched to the climate of their time, and
-    model selection by conventional minimum values or Pareto optimality with a
-    tolerance for ties, with bootstrap estimates of selection robustness.
+Description: Tools for the steps around fitting ecological niche models /
+    species distribution models (ENM/SDM) with any software. Currently
+    implements model evaluation and selection: the simultaneous use of the
+    area under the ROC curve (AUC) and the mean absolute error (MAE) proposed
+    in Konowalik and Nosol (2021) <doi:10.1038/s41598-020-80062-1>, the true
+    skill statistic and the continuous Boyce index; spatial block
+    cross-validation across folds and background sets; temporal validation of
+    hindcasts against dated (e.g. fossil) records matched to the climate of
+    their time; and model selection by conventional minimum values or Pareto
+    optimality on user-chosen metrics, with bootstrap estimates of selection
+    robustness.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
@@ -26,10 +28,11 @@ Imports:
     utils
 Suggests:
     ggrepel,
+    Metrics,
     sf,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
-URL: https://github.com/kkonowalik/ENM_evaluation
-BugReports: https://github.com/kkonowalik/ENM_evaluation/issues
+URL: https://github.com/kkonowalik/preENM
+BugReports: https://github.com/kkonowalik/preENM/issues
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1

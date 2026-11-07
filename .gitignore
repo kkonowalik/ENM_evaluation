@@ -3,5 +3,5 @@
 .RData
 .Ruserdata
 *.Rcheck/
-ENMselect_*.tar.gz
+preENM_*.tar.gz
 Rplots.pdf

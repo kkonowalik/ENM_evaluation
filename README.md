@@ -1,10 +1,28 @@
-# ENMselect: evaluating and choosing species distribution models with AUC and MAE
+# preENM <img src="man/figures/logo.png" align="right" height="139" alt="preENM hex logo" />
 
 <!-- badges: start -->
-[![R-CMD-check](https://github.com/kkonowalik/ENM_evaluation/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/kkonowalik/ENM_evaluation/actions/workflows/R-CMD-check.yaml)
+[![R-CMD-check](https://github.com/kkonowalik/preENM/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/kkonowalik/preENM/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-This R package implements the model-selection approach from:
+**Data preparation for ENM/SDM:** point filtering, background point
+selection, environmental thinning, correlation analysis, and model selection.
+
+`preENM` covers the steps before and after fitting ecological niche models /
+species distribution models. It does not fit models itself, so it works
+alongside any modelling software: biomod2, ENMeval, Maxent, tidymodels or
+your own code.
+
+| Step | Status | Functions |
+|---|---|---|
+| Point filtering | planned | |
+| Background point selection | planned | |
+| Environmental thinning | planned | |
+| Correlation analysis | planned | |
+| **Model evaluation and selection** | **available** | `evaluate_models()`, `evaluate_cv()`, `spatial_folds()`, `temporal_validation()`, `select_models()`, `plot_pareto()`, `plot_selection()` |
+
+### Model evaluation and selection
+
+The model-selection tools implement the approach of:
 
 > Konowalik, K., Nosol, A. (2021). Evaluation metrics and validation of
 > presence-only species distribution models based on distributional maps with
@@ -17,18 +35,20 @@ way to compare models (Figure 6 in the paper). AUC measures how well a model
 suitability values are to what was observed. A model can have an excellent
 AUC and still be badly calibrated, and MAE reveals this.
 
-This package turns the original script into a tool anyone can install, and
-adds statistics for choosing among models:
+On top of this, the package offers:
 
-| | Original script (2021) | `ENMselect` |
-|---|---|---|
-| Spatial packages | `raster`, `sp`, `rgdal` (retired in 2023) | **`terra`** (current standard); `sf` objects accepted |
-| Input | one raster at a time, fixed CSV columns | many models at once; GeoTIFF paths, `SpatRaster`, CSV, `sf`, GBIF-style columns detected automatically |
-| Coordinate systems | had to match manually | points re-projected to each raster automatically |
-| Metrics | AUC, MAE, bias via `Metrics` | same values, no extra dependency (checked to be identical), plus TSS and the continuous Boyce index (identical to `ecospat`) |
-| Validation | one set of evaluation points | also **spatial block cross-validation** across folds and background sets, and **temporal validation** of hindcasts against fossil or other dated records |
-| Model choice | visual inspection of a plot | AUC vs MAE by default, or **any metrics you choose** (including your own); conventional **minimum values** or the **Pareto front** (with a tolerance for ties), compromise distance to the ideal model, **bootstrap** confidence intervals and probability of being on the Pareto front |
-| Plot | manual | ready-to-publish `ggplot2` figure |
+- **any metrics you choose:** AUC vs MAE by default, plus TSS, the
+  continuous Boyce index, bias or your own metrics;
+- **Pareto-front selection** with a tolerance for ties, or conventional
+  **minimum values**;
+- **bootstrap** confidence intervals and the probability that each model is on
+  the Pareto front;
+- **spatial block cross-validation** across folds and background sets;
+- **temporal validation** of hindcasts against fossil or other dated records;
+- ready-to-publish `ggplot2` figures.
+
+Inputs can be GeoTIFF paths, `terra` rasters, CSV files or `sf` objects.
+Points are re-projected to each raster automatically.
 
 ## Installation
 
@@ -37,14 +57,14 @@ from <https://posit.co/download/rstudio-desktop/>. Then run in R:
 
 ```r
 install.packages("remotes")
-remotes::install_github("kkonowalik/ENM_evaluation")
+remotes::install_github("kkonowalik/preENM")
 install.packages("ggrepel")   # optional: neater labels in plots
 ```
 
-## Quick start with example data
+## Quick start: model selection with example data
 
 ```r
-library(ENMselect)
+library(preENM)
 
 sim <- simulate_enm_data(seed = 1)          # 7 example "models" + points
 res <- evaluate_models(sim$models, sim$presence, sim$absence,
@@ -119,7 +139,7 @@ whichever criteria you choose.
 
 ## Using your own data
 
-You need three things, as before:
+You need three things:
 
 1. **Model output rasters**, from Maxent, biomod2, ENMeval, `predicts`,
    `dismo`, or any other software, even outside R. Values should be on a 0–1
@@ -129,7 +149,7 @@ You need three things, as before:
    pseudo-absence points.
 
 ```r
-library(ENMselect)
+library(preENM)
 
 models <- c(maxent  = "M:/GIS/models/maxent_model.tif",
             glm     = "M:/GIS/models/glm_model.tif",
@@ -155,7 +175,7 @@ pass `coords = c("my_x_column", "my_y_column")`. Coordinates in a CSV are
 assumed to be WGS84 longitude/latitude. If they are not, give the CRS, e.g.
 `crs = "EPSG:3035"`. Points that fall on `NA` cells are dropped from all models
 (`na_action = "common"`), so every model is compared on the same points. Use
-`na_action = "per_model"` to reproduce the original script.
+`na_action = "per_model"` to drop them separately for each model instead.
 
 If you already have predicted values at your points, skip the rasters:
 
@@ -167,9 +187,7 @@ evaluate_models(data = tab, n_boot = 1000)
 
 ## Full workflow: spatial cross-validation, fossil validation, selection
 
-`ENMselect` does not fit models: use biomod2, ENMeval, Maxent, tidymodels
-or your own code. It takes over at the evaluation and selection stage. A
-typical workflow for choosing the algorithms of an ensemble:
+A typical workflow for choosing the algorithms of an ensemble:
 
 1. **Spatial folds.** `spatial_folds()` splits the study area into square
    blocks (side ideally larger than the spatial autocorrelation range of the
@@ -190,7 +208,7 @@ A complete example you can run with the simulated data. It compares three GLMs
 on 4 spatial folds and 2 background sets:
 
 ```r
-library(ENMselect)
+library(preENM)
 sim <- simulate_enm_data(seed = 1, n_presence = 150, n_absence = 600)
 pts <- rbind(cbind(sim$presence, occ = 1, set = 0),                  # presences
              cbind(sim$absence, occ = 0, set = rep(1:2, each = 300))) # 2 background sets
@@ -276,13 +294,12 @@ Helpers for preparing the climate of each record:
    every criterion (by default AUC and MAE) and strictly better on one.
    Models that no other model dominates form the **Pareto front**. These are
    the defensible choices, each a different trade-off. With `tol`,
-   differences smaller than the tolerance count as ties. Dominated models can be discarded.
-   Repeating the procedure on the remaining models gives fronts 2, 3, …
+   differences smaller than the tolerance count as ties. Dominated models can
+   be discarded. Repeating the procedure on the remaining models gives fronts 2, 3, …
    (non-dominated sorting).
 3. **Compromise distance.** The criteria are rescaled to 0–1 and each
    model's distance to the *ideal point* (the best value of every criterion)
-   is computed. Use it to
-   pick one model from the front. `weights = c(AUC = 2, MAE = 1)` makes AUC
+   is computed. Use it to pick one model from the front. `weights = c(AUC = 2, MAE = 1)` makes AUC
    count twice as much.
 4. **Bootstrap robustness.** Presence and absence points are resampled with
    replacement (stratified) `n_boot` times and everything is recomputed. This
@@ -302,30 +319,10 @@ pareto_rank(my_table, maximize = c("AUC", "TSS"), minimize = c("MAE", "AICc"),
             zero = "bias")
 ```
 
-## Upgrading from the original script
-
-If you only need the metrics for one raster, this is the original code
-translated to current packages:
-
-```r
-library(terra)
-r    <- rast("M:/GIS/models/maxent_model.tif")
-pres <- read.csv("D:/rs_pres.csv")[, 2:3]
-abs  <- read.csv("D:/rs_abs.csv")[, 2:3]
-pts  <- vect(rbind(setNames(pres, c("x", "y")), setNames(abs, c("x", "y"))),
-             geom = c("x", "y"), crs = "EPSG:4326")
-obs  <- c(rep(1, nrow(pres)), rep(0, nrow(abs)))
-pred <- extract(r, project(pts, r), ID = FALSE)[[1]]
-ok   <- !is.na(pred)
-
-ENMselect::auc_score(obs[ok], pred[ok])
-ENMselect::mae_score(obs[ok], pred[ok])
-ENMselect::bias_score(obs[ok], pred[ok])
-```
-
 ## Citation
 
-If you use this method, please cite the paper (`citation("ENMselect")`):
+If you use the model-selection method, please cite the paper
+(`citation("preENM")`):
 
 > Konowalik, K., Nosol, A. (2021). Evaluation metrics and validation of
 > presence-only species distribution models based on distributional maps with
